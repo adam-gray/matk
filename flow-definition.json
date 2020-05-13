@@ -1,0 +1,711 @@
+{
+    "description": "My Mutual Aid App",
+    "states": [
+      {
+        "name": "Trigger",
+        "type": "trigger",
+        "transitions": [
+          {
+            "next": "set_globals",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "incomingCall"
+          },
+          {
+            "event": "incomingRequest"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -110,
+            "y": -1160
+          }
+        }
+      },
+      {
+        "name": "ask_address_en",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "set_address",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -290,
+            "y": 180
+          },
+          "from": "{{flow.channel.address}}",
+          "body": "OK, {{flow.variables.name}}, Where should we deliver your stuff? Please include the address / drop off point and any delivery instructions.",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "show_request_en",
+        "type": "send-message",
+        "transitions": [
+          {
+            "event": "sent"
+          },
+          {
+            "event": "failed"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -380,
+            "y": 870
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "to": "{{contact.channel.address}}",
+          "body": "OK {{flow.variables.name}} you're all set! We'll review your list and then contact you when we are ready to drop off your goods."
+        }
+      },
+      {
+        "name": "welcome_en",
+        "type": "send-message",
+        "transitions": [
+          {
+            "next": "ask_name_en",
+            "event": "sent"
+          },
+          {
+            "event": "failed"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -30,
+            "y": -290
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "to": "{{contact.channel.address}}",
+          "body": "Thanks for texting {{flow.variables.group_name_en}}.  We're a <description of your group> offering mutual aid to our neighbors to help during COVID-19."
+        }
+      },
+      {
+        "name": "ask_name_en",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "set_name",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -280,
+            "y": -70
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "body": "What's your name?",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "update_request_en",
+        "type": "run-function",
+        "transitions": [
+          {
+            "next": "show_request_en",
+            "event": "success"
+          },
+          {
+            "next": "something_went_wrong_en",
+            "event": "fail"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -80,
+            "y": 630
+          },
+          "parameters": [
+            {
+              "value": "{{flow.variables.name}}",
+              "key": "Name"
+            },
+            {
+              "value": "{{trigger.message.From}}",
+              "key": "Phone"
+            },
+            {
+              "value": "{{flow.variables.address}}",
+              "key": "Address"
+            },
+            {
+              "value": "{{flow.variables.goods}}",
+              "key": "Goods"
+            },
+            {
+              "value": "English",
+              "key": "Language"
+            }
+          ],
+          "url": "<your update-request function url>"
+        }
+      },
+      {
+        "name": "something_went_wrong_en",
+        "type": "send-message",
+        "transitions": [
+          {
+            "event": "sent"
+          },
+          {
+            "event": "failed"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 30,
+            "y": 870
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "to": "{{contact.channel.address}}",
+          "body": "sorry, something went wrong!\n\nplease try me again."
+        }
+      },
+      {
+        "name": "set_name",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "ask_address_en",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "{{widgets.ask_name_en.inbound.Body}}",
+              "key": "name"
+            }
+          ],
+          "offset": {
+            "x": 80,
+            "y": -50
+          }
+        }
+      },
+      {
+        "name": "set_address",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "ask_goods_en",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "{{widgets.ask_address_en.inbound.Body}}",
+              "key": "address"
+            }
+          ],
+          "offset": {
+            "x": 80,
+            "y": 190
+          }
+        }
+      },
+      {
+        "name": "lookup_request",
+        "type": "run-function",
+        "transitions": [
+          {
+            "next": "load_row",
+            "event": "success"
+          },
+          {
+            "next": "get_language",
+            "event": "fail"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -410,
+            "y": -570
+          },
+          "parameters": [
+            {
+              "value": "{{trigger.message.From}}",
+              "key": "Phone"
+            }
+          ],
+          "url": "<your find-request function url>"
+        }
+      },
+      {
+        "name": "load_row",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "show_request_en",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "value": "{{widgets.lookup_subscriber.parsed.fields.name}}",
+              "key": "Name"
+            },
+            {
+              "value": "{{widgets.lookup_subscriber.parsed.fields.address}}",
+              "key": "Address"
+            },
+            {
+              "value": "{{widgets.lookup_subscriber.parsed.fields.allergies}}",
+              "key": "Allergies"
+            }
+          ],
+          "offset": {
+            "x": -530,
+            "y": -300
+          }
+        }
+      },
+      {
+        "name": "ask_goods_en",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "set_goods_en",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": -290,
+            "y": 430
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "body": "What do you need?  Enter a list of groceries, essential goods, or prescriptions (and where to pick up).  Try to keep it under $50.",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "set_goods_en",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "update_request_en",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "{{widgets.ask_goods_en.inbound.Body}}",
+              "key": "goods"
+            }
+          ],
+          "offset": {
+            "x": 70,
+            "y": 430
+          }
+        }
+      },
+      {
+        "name": "set_globals",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "lookup_request",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "My Mutual Aid Network",
+              "key": "group_name_en"
+            },
+            {
+              "value": "Mi red de yuda mutua",
+              "key": "group_name_es"
+            }
+          ],
+          "offset": {
+            "x": -410,
+            "y": -850
+          }
+        }
+      },
+      {
+        "name": "get_language",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "split_based_on_language",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 70,
+            "y": -780
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "body": "For English, press 1. Para español, marque 2",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "split_based_on_language",
+        "type": "split-based-on",
+        "transitions": [
+          {
+            "next": "get_language",
+            "event": "noMatch"
+          },
+          {
+            "next": "welcome_en",
+            "event": "match",
+            "conditions": [
+              {
+                "friendly_name": "If value equal_to 1",
+                "arguments": [
+                  "{{widgets.get_language.inbound.Body}}"
+                ],
+                "type": "equal_to",
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "next": "welcome_es",
+            "event": "match",
+            "conditions": [
+              {
+                "friendly_name": "If value equal_to 2",
+                "arguments": [
+                  "{{widgets.get_language.inbound.Body}}"
+                ],
+                "type": "equal_to",
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "input": "{{widgets.get_language.inbound.Body}}",
+          "offset": {
+            "x": 90,
+            "y": -550
+          }
+        }
+      },
+      {
+        "name": "welcome_es",
+        "type": "send-message",
+        "transitions": [
+          {
+            "next": "ask_name_es",
+            "event": "sent"
+          },
+          {
+            "event": "failed"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 530,
+            "y": -300
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "to": "{{contact.channel.address}}",
+          "body": "Gracias por enviar mensajes de texto a {{flow.variables.group_name_es}}. Somos un grupo de residentes de <nombre del barrio> que ofrece ayuda mutua a nuestros vecinos para ayudar durante COVID-19."
+        }
+      },
+      {
+        "name": "ask_name_es",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "set_name_es",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 540,
+            "y": -70
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "body": "¿Cómo se llama?",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "ask_address_es",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "set_address_es",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 530,
+            "y": 190
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "body": "OK, {{flow.variables.name}}, ¿Dónde deberíamos entregar tus cosas? Incluya la dirección / punto de entrega y las instrucciones de entrega.",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "set_name_es",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "ask_address_es",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "{{widgets.ask_name_es.inbound.Body}}",
+              "key": "name"
+            }
+          ],
+          "offset": {
+            "x": 880,
+            "y": -70
+          }
+        }
+      },
+      {
+        "name": "set_address_es",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "ask_goods_es",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "{{widgets.ask_address_es.inbound.Body}}",
+              "key": "address"
+            }
+          ],
+          "offset": {
+            "x": 910,
+            "y": 200
+          }
+        }
+      },
+      {
+        "name": "ask_goods_es",
+        "type": "send-and-wait-for-reply",
+        "transitions": [
+          {
+            "next": "set_goods_es",
+            "event": "incomingMessage"
+          },
+          {
+            "event": "timeout"
+          },
+          {
+            "event": "deliveryFailure"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 530,
+            "y": 430
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "body": "¿Que necesitas? Ingrese una lista de alimentos, productos esenciales o recetas (y dónde recogerlos). Intenta mantenerlo por debajo de $ 50.",
+          "timeout": 3600
+        }
+      },
+      {
+        "name": "set_goods_es",
+        "type": "set-variables",
+        "transitions": [
+          {
+            "next": "update_request_es",
+            "event": "next"
+          }
+        ],
+        "properties": {
+          "variables": [
+            {
+              "index": "0",
+              "value": "{{widgets.ask_goods_es.inbound.Body}}",
+              "key": "goods"
+            }
+          ],
+          "offset": {
+            "x": 930,
+            "y": 440
+          }
+        }
+      },
+      {
+        "name": "update_request_es",
+        "type": "run-function",
+        "transitions": [
+          {
+            "next": "finish_request_es",
+            "event": "success"
+          },
+          {
+            "next": "something_went_wrong_es",
+            "event": "fail"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 720,
+            "y": 660
+          },
+          "parameters": [
+            {
+              "value": "{{flow.variables.name}}",
+              "key": "Name"
+            },
+            {
+              "value": "{{trigger.message.From}}",
+              "key": "Phone"
+            },
+            {
+              "value": "{{flow.variables.address}}",
+              "key": "Address"
+            },
+            {
+              "value": "{{flow.variables.goods}}",
+              "key": "Goods"
+            },
+            {
+              "value": "Spanish",
+              "key": "Language"
+            }
+          ],
+          "url": "<your update-request url>"
+        }
+      },
+      {
+        "name": "finish_request_es",
+        "type": "send-message",
+        "transitions": [
+          {
+            "event": "sent"
+          },
+          {
+            "event": "failed"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 540,
+            "y": 900
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "to": "{{contact.channel.address}}",
+          "body": "OK {{flow.variables.name}} ¡estás listo! Revisaremos su lista y luego nos comunicaremos con usted cuando estemos listos para entregar sus productos."
+        }
+      },
+      {
+        "name": "something_went_wrong_es",
+        "type": "send-message",
+        "transitions": [
+          {
+            "event": "sent"
+          },
+          {
+            "event": "failed"
+          }
+        ],
+        "properties": {
+          "offset": {
+            "x": 950,
+            "y": 890
+          },
+          "service": "{{trigger.message.InstanceSid}}",
+          "channel": "{{trigger.message.ChannelSid}}",
+          "from": "{{flow.channel.address}}",
+          "to": "{{contact.channel.address}}",
+          "body": "¡Perdón, algo salió mal! Inténtalo de nuevo."
+        }
+      }
+    ],
+    "initial_state": "Trigger",
+    "flags": {
+      "allow_concurrent_calls": true
+    }
+  }
